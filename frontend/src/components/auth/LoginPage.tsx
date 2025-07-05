@@ -1,105 +1,92 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Mail, Lock, Github } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
-import { authAPI } from '../../services/api';
 import { useAuthStore } from '../../store/authStore';
 
 export const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [name, setName] = useState('');
   const [error, setError] = useState('');
   
   const navigate = useNavigate();
-  const location = useLocation();
-  const { setUser, isAuthenticated } = useAuthStore();
+  const { 
+    isAuthenticated, 
+    isLoading, 
+    signInWithGoogle, 
+    signInWithEmail, 
+    signUpWithEmail,
+    initialize 
+  } = useAuthStore();
 
-  // Handle OAuth callback
   useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const success = urlParams.get('success');
-    const error = urlParams.get('error');
-    
-    if (success === 'true') {
-      // OAuth was successful, check auth status
-      checkAuthStatus();
-    } else if (error) {
-      setError(decodeURIComponent(error));
-      // Clear error from URL
-      window.history.replaceState({}, document.title, '/login');
-    }
-  }, []);
+    initialize();
+  }, [initialize]);
 
-  const checkAuthStatus = async () => {
-    try {
-      const response = await authAPI.checkAuth();
-      if (response.data.authenticated && response.data.user) {
-        setUser(response.data.user);
-        // Get redirect path from localStorage or use default
-        const redirectPath = localStorage.getItem('redirect_after_auth') || '/chat';
-        localStorage.removeItem('redirect_after_auth');
-        navigate(redirectPath);
-      }
-    } catch (error) {
-      console.error('Auth check failed:', error);
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/chat', { replace: true });
     }
-  };
+  }, [isAuthenticated, navigate]);
 
-  const handleEmailLogin = async (e: React.FormEvent) => {
+  const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
     setError('');
     
     try {
-      const response = await authAPI.login({ email, password });
-      
-      if (response.data.user) {
-        setUser(response.data.user);
-        const from = location.state?.from?.pathname || '/chat';
-        navigate(from, { replace: true });
+      if (isSignUp) {
+        if (!name.trim()) {
+          setError('Name is required');
+          return;
+        }
+        await signUpWithEmail(email, password, name);
+      } else {
+        await signInWithEmail(email, password);
       }
+      navigate('/chat');
     } catch (error: any) {
-      console.error('Login failed:', error);
-      setError(error.message || 'Login failed. Please try again.');
-    } finally {
-      setIsLoading(false);
+      console.error('Auth error:', error);
+      setError(error.message || 'Authentication failed. Please try again.');
     }
   };
 
-  const handleGoogleLogin = async () => {
+  const handleGoogleAuth = async () => {
     try {
-      setIsLoading(true);
       setError('');
-      
-      // Google login will redirect to backend OAuth endpoint
-      authAPI.googleLogin();
+      await signInWithGoogle();
     } catch (error: any) {
-      console.error('Google login failed:', error);
-      setError('Google login failed. Please try again.');
-      setIsLoading(false);
+      console.error('Google auth error:', error);
+      setError('Google authentication failed. Please try again.');
     }
   };
 
-  // If already authenticated, redirect
-  if (isAuthenticated) {
-    navigate('/chat', { replace: true });
-    return null;
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="min-h-screen flex">
+    <div className="min-h-screen flex flex-col lg:flex-row">
       {/* Left side - Welcome message and abstract design */}
-      <div className="flex-1 bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-12 relative overflow-hidden">
-        <div className="max-w-md z-10">
-          <div className="flex items-center mb-8">
+      <div className="flex-1 bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-6 lg:p-12 relative overflow-hidden">
+        <div className="max-w-md z-10 text-center lg:text-left">
+          <div className="flex items-center justify-center lg:justify-start mb-8">
             <div className="w-8 h-8 bg-gray-900 rounded-lg flex items-center justify-center mr-3">
               <div className="w-4 h-4 bg-white rounded-sm"></div>
             </div>
             <span className="text-xl font-semibold text-gray-900">MCP Chat Bot</span>
           </div>
-          <h1 className="text-4xl font-bold text-gray-900 mb-6">
+          <h1 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-6">
             Welcome to MCP Chat Bot
           </h1>
           <p className="text-lg text-gray-600 leading-relaxed">
@@ -108,28 +95,25 @@ export const LoginPage: React.FC = () => {
         </div>
         
         {/* Abstract lines */}
-        <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute inset-0 overflow-hidden opacity-30">
           <svg className="absolute -top-40 -right-40 w-96 h-96 text-gray-200" viewBox="0 0 400 400" fill="none">
             <path d="M50 200 Q 200 50 350 200 Q 200 350 50 200" stroke="currentColor" strokeWidth="2" fill="none" opacity="0.3"/>
             <path d="M80 200 Q 200 80 320 200 Q 200 320 80 200" stroke="currentColor" strokeWidth="1.5" fill="none" opacity="0.4"/>
             <path d="M110 200 Q 200 110 290 200 Q 200 290 110 200" stroke="currentColor" strokeWidth="1" fill="none" opacity="0.5"/>
           </svg>
-          <svg className="absolute -bottom-40 -left-40 w-96 h-96 text-gray-200" viewBox="0 0 400 400" fill="none">
-            <path d="M50 50 L 350 350" stroke="currentColor" strokeWidth="1" opacity="0.2"/>
-            <path d="M80 50 L 350 320" stroke="currentColor" strokeWidth="1" opacity="0.3"/>
-            <path d="M110 50 L 350 290" stroke="currentColor" strokeWidth="1" opacity="0.4"/>
-            <path d="M50 80 L 320 350" stroke="currentColor" strokeWidth="1" opacity="0.3"/>
-            <path d="M50 110 L 290 350" stroke="currentColor" strokeWidth="1" opacity="0.4"/>
-          </svg>
         </div>
       </div>
 
-      {/* Right side - Login form */}
-      <div className="flex-1 flex items-center justify-center p-12 bg-white">
+      {/* Right side - Auth form */}
+      <div className="flex-1 flex items-center justify-center p-6 lg:p-12 bg-white">
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
-            <h2 className="text-3xl font-bold text-gray-900 mb-2">Welcome Back</h2>
-            <p className="text-gray-600">Sign in to continue to your account</p>
+            <h2 className="text-2xl lg:text-3xl font-bold text-gray-900 mb-2">
+              {isSignUp ? 'Create Account' : 'Welcome Back'}
+            </h2>
+            <p className="text-gray-600">
+              {isSignUp ? 'Sign up to get started' : 'Sign in to continue to your account'}
+            </p>
           </div>
 
           {error && (
@@ -138,7 +122,18 @@ export const LoginPage: React.FC = () => {
             </div>
           )}
 
-          <form onSubmit={handleEmailLogin} className="space-y-6">
+          <form onSubmit={handleEmailAuth} className="space-y-6">
+            {isSignUp && (
+              <Input
+                label="Full Name"
+                type="text"
+                placeholder="John Doe"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+              />
+            )}
+
             <Input
               label="Email"
               type="email"
@@ -149,15 +144,24 @@ export const LoginPage: React.FC = () => {
               required
             />
 
-            <Input
-              label="Password"
-              type="password"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              icon={<Lock className="w-5 h-5 text-gray-400" />}
-              required
-            />
+            <div className="relative">
+              <Input
+                label="Password"
+                type={showPassword ? 'text' : 'password'}
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                icon={<Lock className="w-5 h-5 text-gray-400" />}
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-8 text-gray-400 hover:text-gray-600"
+              >
+                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              </button>
+            </div>
 
             <Button
               type="submit"
@@ -166,7 +170,7 @@ export const LoginPage: React.FC = () => {
               size="lg"
               disabled={isLoading}
             >
-              Sign in
+              {isSignUp ? 'Create Account' : 'Sign In'}
             </Button>
           </form>
 
@@ -180,10 +184,10 @@ export const LoginPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="mt-6 grid grid-cols-2 gap-3">
+            <div className="mt-6">
               <Button
                 variant="outline"
-                onClick={handleGoogleLogin}
+                onClick={handleGoogleAuth}
                 className="w-full"
                 size="lg"
                 loading={isLoading}
@@ -195,26 +199,23 @@ export const LoginPage: React.FC = () => {
                   <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
                   <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
                 </svg>
-                Google
-              </Button>
-
-              <Button
-                variant="outline"
-                className="w-full"
-                size="lg"
-                icon={Github}
-                disabled={true}
-              >
-                GitHub
+                Continue with Google
               </Button>
             </div>
           </div>
 
           <p className="mt-8 text-center text-sm text-gray-600">
-            Don't have an account?{' '}
-            <Link to="/signup" className="font-medium text-gray-900 hover:text-gray-700 transition-colors">
-              Sign up
-            </Link>
+            {isSignUp ? 'Already have an account?' : "Don't have an account?"}{' '}
+            <button
+              type="button"
+              onClick={() => {
+                setIsSignUp(!isSignUp);
+                setError('');
+              }}
+              className="font-medium text-gray-900 hover:text-gray-700 transition-colors"
+            >
+              {isSignUp ? 'Sign in' : 'Sign up'}
+            </button>
           </p>
         </div>
       </div>

@@ -31,6 +31,35 @@ interface AttachmentPreview {
   preview?: string;
 }
 
+// URL detection regex
+const URL_REGEX = /(https?:\/\/[^\s]+)/g;
+
+const formatMessageContent = (content: string) => {
+  return content.split('\n').map((line, lineIndex) => {
+    const parts = line.split(URL_REGEX);
+    return (
+      <div key={lineIndex} className={lineIndex > 0 ? 'mt-2' : ''}>
+        {parts.map((part, partIndex) => {
+          if (URL_REGEX.test(part)) {
+            return (
+              <a
+                key={partIndex}
+                href={part}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:text-blue-800 underline break-all"
+              >
+                {part}
+              </a>
+            );
+          }
+          return <span key={partIndex}>{part}</span>;
+        })}
+      </div>
+    );
+  });
+};
+
 export const ChatInterface: React.FC = () => {
   const { chatId } = useParams();
   const navigate = useNavigate();
@@ -48,7 +77,8 @@ export const ChatInterface: React.FC = () => {
     selectedModel,
     enabledTools,
     setCurrentChatId,
-    refreshChats
+    refreshChats,
+    sidebarOpen
   } = useChatStore();
   const { user } = useAuthStore();
 
@@ -220,7 +250,7 @@ export const ChatInterface: React.FC = () => {
   }, [input]);
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-white">
+    <div className={`flex-1 flex flex-col h-full bg-white transition-all duration-300 ${sidebarOpen ? 'lg:ml-0' : 'lg:ml-0'}`}>
       {/* Header */}
       <div className="border-b border-gray-200 p-4 flex items-center justify-between">
         <div className="flex items-center space-x-4">
@@ -242,11 +272,11 @@ export const ChatInterface: React.FC = () => {
 
       <div className="flex flex-1 overflow-hidden">
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex-1 overflow-y-auto p-4 lg:p-6">
           {messages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-center">
+            <div className="flex flex-col items-center justify-center h-full text-center px-4">
               <div className="max-w-md">
-                <h2 className="text-2xl font-semibold text-gray-900 mb-4">
+                <h2 className="text-xl lg:text-2xl font-semibold text-gray-900 mb-4">
                   Where would you like to start?
                 </h2>
                 <p className="text-gray-600 mb-8">
@@ -269,20 +299,22 @@ export const ChatInterface: React.FC = () => {
               </div>
             </div>
           ) : (
-            <div className="max-w-3xl mx-auto space-y-6">
+            <div className="max-w-4xl mx-auto space-y-6">
               {messages.map((message) => (
                 <div
                   key={message.id}
                   className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
                   <div
-                    className={`max-w-[80%] rounded-2xl px-4 py-3 ${
+                    className={`max-w-[85%] lg:max-w-[80%] rounded-2xl px-4 py-3 ${
                       message.role === 'user'
                         ? 'bg-gray-900 text-white'
                         : 'bg-gray-100 text-gray-900'
                     }`}
                   >
-                    <div className="whitespace-pre-wrap">{message.content}</div>
+                    <div className="break-words overflow-wrap-anywhere">
+                      {formatMessageContent(message.content)}
+                    </div>
                     
                     {/* Attachments */}
                     {message.attachments && message.attachments.length > 0 && (
@@ -296,9 +328,9 @@ export const ChatInterface: React.FC = () => {
                                 message.role === 'user' ? 'bg-gray-800' : 'bg-gray-200'
                               }`}
                             >
-                              <IconComponent className="w-4 h-4" />
-                              <span className="text-sm truncate">{attachment.original_name}</span>
-                              <span className="text-xs opacity-70">
+                              <IconComponent className="w-4 h-4 flex-shrink-0" />
+                              <span className="text-sm truncate flex-1">{attachment.original_name}</span>
+                              <span className="text-xs opacity-70 flex-shrink-0">
                                 {formatFileSize(attachment.file_size)}
                               </span>
                             </div>
@@ -309,16 +341,16 @@ export const ChatInterface: React.FC = () => {
                     
                     {/* Message metadata */}
                     <div
-                      className={`text-xs mt-2 flex items-center justify-between ${
+                      className={`text-xs mt-2 flex items-center justify-between flex-wrap gap-1 ${
                         message.role === 'user' ? 'text-gray-300' : 'text-gray-500'
                       }`}
                     >
                       <span>{new Date(message.created_at).toLocaleTimeString()}</span>
                       {message.model && (
-                        <span className="ml-2">• {message.model}</span>
+                        <span className="hidden sm:inline">• {message.model}</span>
                       )}
                       {message.tools_used && message.tools_used.length > 0 && (
-                        <span className="ml-2">• Tools: {message.tools_used.join(', ')}</span>
+                        <span className="hidden md:inline">• Tools: {message.tools_used.join(', ')}</span>
                       )}
                     </div>
                   </div>
@@ -347,7 +379,7 @@ export const ChatInterface: React.FC = () => {
 
       {/* Input */}
       <div className="border-t border-gray-200 p-4">
-        <div className="max-w-3xl mx-auto">
+        <div className="max-w-4xl mx-auto">
           {/* Attachment Previews */}
           {attachments.length > 0 && (
             <div className="mb-4 flex flex-wrap gap-2">
@@ -360,10 +392,10 @@ export const ChatInterface: React.FC = () => {
                     <img
                       src={attachment.preview}
                       alt={attachment.file.name}
-                      className="w-8 h-8 object-cover rounded"
+                      className="w-8 h-8 object-cover rounded flex-shrink-0"
                     />
                   ) : (
-                    <File className="w-8 h-8 text-gray-500" />
+                    <File className="w-8 h-8 text-gray-500 flex-shrink-0" />
                   )}
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-gray-900 truncate">
@@ -375,7 +407,7 @@ export const ChatInterface: React.FC = () => {
                   </div>
                   <button
                     onClick={() => removeAttachment(attachment.id)}
-                    className="text-gray-400 hover:text-gray-600"
+                    className="text-gray-400 hover:text-gray-600 flex-shrink-0"
                   >
                     <X className="w-4 h-4" />
                   </button>
@@ -399,11 +431,11 @@ export const ChatInterface: React.FC = () => {
                 variant="ghost"
                 size="sm"
                 icon={Paperclip}
-                className="text-gray-500 hover:text-gray-700"
+                className="text-gray-500 hover:text-gray-700 flex-shrink-0"
                 onClick={() => fileInputRef.current?.click()}
               />
               
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 <textarea
                   ref={textareaRef}
                   value={input}
@@ -416,12 +448,12 @@ export const ChatInterface: React.FC = () => {
                 />
               </div>
 
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-2 flex-shrink-0">
                 <Button
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="text-gray-500 hover:text-gray-700"
+                  className="text-gray-500 hover:text-gray-700 hidden sm:block"
                   onClick={() => setShowToolsPanel(!showToolsPanel)}
                 >
                   Tools

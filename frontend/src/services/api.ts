@@ -13,13 +13,8 @@ const api = axios.create({
 // Add request interceptor to include JWT token
 api.interceptors.request.use(
   (config) => {
-    // Get token from localStorage or from auth store
-    const token = localStorage.getItem('auth-token') || 
-                  JSON.parse(localStorage.getItem('auth-storage') || '{}')?.state?.token;
-    
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
+    // For now, we'll rely on session cookies from the backend
+    // The backend server.js handles session-based auth
     return config;
   },
   (error) => {
@@ -33,30 +28,13 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       // Clear auth state on 401 errors
-      localStorage.removeItem('auth-storage');
-      localStorage.removeItem('auth-token');
       window.location.href = '/login';
     }
     return Promise.reject(error);
   }
 );
 
-// Auth API
-export const authAPI = {
-  checkAuth: () => api.get('/auth/user'),
-  logout: () => api.post('/auth/logout'),
-  googleLogin: () => {
-    window.location.href = `${API_BASE_URL}/auth/google`;
-  },
-  login: async (credentials: { email: string; password: string }) => {
-    // This would be for email/password login if you implement it
-    return api.post('/auth/login', credentials);
-  },
-  updatePreferences: (preferences: any) => api.put('/api/user/preferences', preferences),
-  getPreferences: () => api.get('/api/user/preferences'),
-};
-
-// Chat API
+// Chat API - these endpoints should match what server.js expects
 export const chatAPI = {
   sendMessage: (message: string, chatId?: string, model?: string, enabledTools?: string[]) =>
     api.post('/api/chat', { message, chatId, model, enabledTools }),
