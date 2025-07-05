@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { useAuthStore } from '../../store/authStore';
@@ -11,21 +11,18 @@ export const LoginPage: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
   const [name, setName] = useState('');
-  const [error, setError] = useState('');
+  const [localError, setLocalError] = useState('');
   
   const navigate = useNavigate();
   const { 
     isAuthenticated, 
     isLoading, 
+    error,
     signInWithGoogle, 
     signInWithEmail, 
     signUpWithEmail,
-    initialize 
+    clearError
   } = useAuthStore();
-
-  useEffect(() => {
-    initialize();
-  }, [initialize]);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -33,14 +30,20 @@ export const LoginPage: React.FC = () => {
     }
   }, [isAuthenticated, navigate]);
 
+  useEffect(() => {
+    // Clear errors when switching between sign in/up
+    clearError();
+    setLocalError('');
+  }, [isSignUp, clearError]);
+
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    setLocalError('');
     
     try {
       if (isSignUp) {
         if (!name.trim()) {
-          setError('Name is required');
+          setLocalError('Name is required');
           return;
         }
         await signUpWithEmail(email, password, name);
@@ -50,30 +53,22 @@ export const LoginPage: React.FC = () => {
       navigate('/chat');
     } catch (error: any) {
       console.error('Auth error:', error);
-      setError(error.message || 'Authentication failed. Please try again.');
+      setLocalError(error.message || 'Authentication failed. Please try again.');
     }
   };
 
   const handleGoogleAuth = async () => {
     try {
-      setError('');
+      setLocalError('');
+      clearError();
       await signInWithGoogle();
     } catch (error: any) {
       console.error('Google auth error:', error);
-      setError('Google authentication failed. Please try again.');
+      setLocalError('Google authentication failed. Please try again.');
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
-        </div>
-      </div>
-    );
-  }
+  const displayError = localError || error;
 
   return (
     <div className="min-h-screen flex flex-col lg:flex-row">
@@ -116,9 +111,10 @@ export const LoginPage: React.FC = () => {
             </p>
           </div>
 
-          {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-sm text-red-600">{error}</p>
+          {displayError && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start space-x-2">
+              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-red-600">{displayError}</p>
             </div>
           )}
 
@@ -210,7 +206,8 @@ export const LoginPage: React.FC = () => {
               type="button"
               onClick={() => {
                 setIsSignUp(!isSignUp);
-                setError('');
+                setLocalError('');
+                clearError();
               }}
               className="font-medium text-gray-900 hover:text-gray-700 transition-colors"
             >

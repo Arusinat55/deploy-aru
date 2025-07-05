@@ -7,14 +7,17 @@ interface ProtectedRouteProps {
 }
 
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
-  const { isAuthenticated, isLoading, initialize } = useAuthStore();
+  const { isAuthenticated, isLoading, initialize, initialized } = useAuthStore();
   const location = useLocation();
 
   useEffect(() => {
-    initialize();
-  }, [initialize]);
+    if (!initialized) {
+      initialize();
+    }
+  }, [initialize, initialized]);
 
-  if (isLoading) {
+  // Show loading only if not initialized yet
+  if (!initialized && isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
