@@ -718,44 +718,52 @@ const getAllMCPTools = () => [
         type: "function",
         function: {
             name: "gmail_find_messages_with_attachments",
-            description: "Find Gmail messages with attachments based on search criteria",
+            description: "Find Gmail messages with attachments based on search criteria. Supports filtering by sender, subject, date range, and attachment type with comprehensive MIME type support.",
             parameters: {
                 type: "object",
                 properties: {
-                    max_results: {
-                        type: "integer",
+                    max_results: { 
+                        type: "integer", 
                         description: "Maximum number of messages to return",
                         minimum: 1,
                         maximum: 100
                     },
-                    query: {
-                        type: "string",
-                        description: "Custom Gmail search query (optional)"
+                    query: { 
+                        type: "string", 
+                        description: "Custom Gmail search query (optional)" 
                     },
-                    sender: {
-                        type: "string",
-                        description: "Filter by sender email/name (optional)"
+                    sender: { 
+                        type: "string", 
+                        description: "Filter by sender email/name (optional)" 
                     },
-                    subject_contains: {
-                        type: "string",
-                        description: "Filter by subject containing text (optional)"
+                    subject_contains: { 
+                        type: "string", 
+                        description: "Filter by subject containing text (optional)" 
                     },
-                    date_after: {
-                        type: "string",
-                        description: "Messages after date in YYYY/MM/DD format (optional)"
+                    date_after: { 
+                        type: "string", 
+                        description: "Messages after date in YYYY/MM/DD format (optional)",
+                        pattern: "^\\d{4}/\\d{2}/\\d{2}$"
                     },
-                    date_before: {
-                        type: "string",
-                        description: "Messages before date in YYYY/MM/DD format (optional)"
+                    date_before: { 
+                        type: "string", 
+                        description: "Messages before date in YYYY/MM/DD format (optional)",
+                        pattern: "^\\d{4}/\\d{2}/\\d{2}$"
                     },
-                    attachment_type: {
-                        type: "string",
-                        description: "Filter by attachment extension (pdf, xlsx, docx, etc.) (optional)",
-                        enum: ["pdf", "doc", "docx", "rtf", "odt", "xls", "xlsx", "ods", "csv", "ppt", "pptx", "odp", "txt", "md", "json", "xml", "html", "css", "js", "jpg", "jpeg", "png", "gif", "bmp", "tiff", "tif", "svg", "webp", "zip", "rar", "7z", "tar", "gz", "mp3", "wav", "flac", "aac", "ogg", "mp4", "avi", "mov", "wmv", "flv", "mkv", "gdoc", "gsheet", "gslides", "gdraw", "gform", "gsite"]
+                    attachment_type: { 
+                        type: "string", 
+                        description: "Filter by attachment extension (e.g., pdf, xlsx, docx, jpg, zip, etc.)",
+                        enum: [
+                            "pdf", "doc", "docx", "rtf", "odt", "xls", "xlsx", "ods", "csv",
+                            "ppt", "pptx", "odp", "txt", "md", "json", "xml", "html", "css", "js",
+                            "jpg", "jpeg", "png", "gif", "bmp", "tiff", "tif", "svg", "webp",
+                            "zip", "rar", "7z", "tar", "gz", "mp3", "wav", "flac", "aac", "ogg",
+                            "mp4", "avi", "mov", "wmv", "flv", "mkv", "gdoc", "gsheet", "gslides", "gdraw", "gform", "gsite"
+                        ]
                     },
-                    mime_type: {
-                        type: "string",
-                        description: "Filter by exact MIME type (e.g., 'application/pdf') (optional)"
+                    mime_type: { 
+                        type: "string", 
+                        description: "Filter by exact MIME type (e.g., 'application/pdf', 'image/jpeg') - overrides attachment_type if both provided"
                     }
                 },
                 required: ["max_results"]
@@ -766,17 +774,18 @@ const getAllMCPTools = () => [
         type: "function",
         function: {
             name: "gmail_read_attachment_content",
-            description: "Reads and extracts text content from a PDF, DOCX, or TXT attachment in a Gmail message. Maximum token limit: 30000 tokens",
+            description: "Reads and extracts text content from a PDF, DOCX, or TXT attachment in a Gmail message. Enhanced with better error handling and authentication checks.",
             parameters: {
                 type: "object",
                 properties: {
-                    message_id: {
-                        type: "string",
-                        description: "Gmail message ID containing the attachment"
+                    message_id: { 
+                        type: "string", 
+                        description: "The Gmail message ID containing the attachment" 
                     },
-                    attachment_id: {
-                        type: "string",
-                        description: "Specific attachment ID to read. If not provided, automatically uses the first supported attachment found (optional)"
+                    attachment_type: { 
+                        type: "string", 
+                        description: "Optional. Specify 'pdf', 'docx', or 'txt' to select specific attachment type. If not provided, will auto-select the first supported attachment found.",
+                        enum: ["pdf", "docx", "txt"]
                     }
                 },
                 required: ["message_id"]
